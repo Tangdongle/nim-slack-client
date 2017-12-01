@@ -6,7 +6,7 @@ description = "Slack Client API for nim"
 license = "MIT"
 
 requires "nim >= 0.17.3"
-requires "https://github.com/Tangdongle/websocket.nim#head"
+requires "https://github.com/Tangdongle/websocket.nim#head", "https://github.com/superfunc/maybe"
 
 task co, "Compile":
   exec "nim c -d:ssl --out:bin/nimslackclient nimslackclient.nim"

@@ -75,7 +75,7 @@ proc initBotUser(self: var SlackServer, selfData: JsonNode) {.discardable.} =
   self.users.prepend(user)
 
 proc parseChannels(self: var SlackServer, channels: JsonNode) {.discardable.} = 
-  ## Parses users from a JsonNode of users from a slack login and adds them to the server's list
+  ## Parses users from a JsonNode of users from a slack login and adds them to the servers list
   var channelList = self.channels
 
   for channel in channels:
@@ -95,7 +95,7 @@ proc parseChannels(self: var SlackServer, channels: JsonNode) {.discardable.} =
       continue
 
 proc parseUsers(self: var SlackServer, users: JsonNode) {.discardable.} = 
-  ## Parses users from a JsonNode of users from a slack login and adds them to the server's list
+  ## Parses users from a JsonNode of users from a slack login and adds them to the servers list
   var userList = self.users
   var email, real_name:string
   var tz: TimeZone
@@ -288,7 +288,25 @@ proc sendRTMMessage*(self: var SlackServer, channel: SlackChannel, message: stri
   self.sendToWebSocket(messageJson)
 
 proc apiCall*(self: SlackServer, request: string, timeout: int, payload: JsonNode = newJObject()): SlackMessage = 
+  #[
+  Sends an API call to the server and returns a SlackMessage request
+  ]#
   self.apiRequester.sendRequest(token=self.token, server=self, request=request, data=payload, timeout=timeout)
+
+proc websocketSafeRead*(self: SlackServer): Future[string] {.async.} =
+  #[
+  Polls the websocket for string result or raises an exception
+  ]#
+  while true:
+    try:
+      let data = await self.websocket.sock.readData(true)
+      result = data.data.strip(trailing=true, leading=true)
+    except IOError:
+      echo "IOError"
+
+  discard self.websocket.close()
+  echo "... socket went away"
+  return ""
 
 ### Callbacks
 
@@ -297,14 +315,14 @@ proc reader(ws: AsyncWebSocket) {.async.} =
     let read = await ws.sock.readData(true)
     echo "read: " & $read
 
-proc ping(ws: AsyncWebSocket) {.async.} =
+proc ping*(ws: AsyncWebSocket) {.async.} =
   while true:
     await sleepAsync(6000)
     echo "ping"
     await ws.sock.sendPing(true)
 
 proc serve*(self: SlackServer) {.async.} = 
-  ## The main event loop. Reads data from slack's RTM
+  ## The main event loop. Reads data from slacks RTM
   ## Individual implementations should define their own loop
   
   let ws = self.websocket
