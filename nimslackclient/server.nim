@@ -74,7 +74,7 @@ proc initBotUser(self: var SlackServer, selfData: JsonNode) {.discardable.} =
   var user = SlackUser(id: selfData["id"].str, name: selfData["name"].str, real_name: self.config.BotName, email: self.config.BotEmail, timezone: Timezone(zone: self.config.BotTimeZone), server: self)
   self.users.prepend(user)
 
-proc parseChannels(self: var SlackServer, channels: JsonNode) {.discardable.} = 
+proc parseChannels*(self: var SlackServer, channels: JsonNode) {.discardable.} = 
   ## Parses users from a JsonNode of users from a slack login and adds them to the servers list
   var channelList = self.channels
 
@@ -94,9 +94,10 @@ proc parseChannels(self: var SlackServer, channels: JsonNode) {.discardable.} =
       echo "Invalid channel data for channel $#" % channel["name"].str
       continue
 
-proc parseUsers(self: var SlackServer, users: JsonNode) {.discardable.} = 
+proc parseUsers*(self: SlackServer, users: JsonNode): SlackServer {.discardable.} = 
   ## Parses users from a JsonNode of users from a slack login and adds them to the servers list
-  var userList = self.users
+  result = self
+  var userList = result.users
   var email, real_name:string
   var tz: TimeZone
 
@@ -116,7 +117,7 @@ proc parseUsers(self: var SlackServer, users: JsonNode) {.discardable.} =
       real_name=real_name,
       email=email,
       timezone=tz,
-      server=self
+      server=result
       )
     counter += 1
     userList.prepend(newUser)
@@ -126,7 +127,7 @@ proc attachUser*(self: SlackServer, name, user_id, real_name, tz: string): Slack
   result = self
   result.users.prepend(initSlackUser(user_id=user_id, name=name, real_name=real_name, timezone=tz, server=result))
 
-proc attachChannel*(self: SlackServer, name, user_id, tz: string = "UTC", members: JsonNode = newJObject()): SlackServer = 
+proc attachChannel*(self: SlackServer, name, user_id, tz: string = "UTC", members: seq[JsonNode] = @[]): SlackServer = 
   new result
   result = self
 
@@ -298,36 +299,19 @@ proc websocketSafeRead*(self: SlackServer): Future[string] {.async.} =
   Polls the websocket for string result or raises an exception
   ]#
   while true:
-    try:
-      let data = await self.websocket.sock.readData(true)
-      result = data.data.strip(trailing=true, leading=true)
-    except IOError:
-      echo "IOError"
+    var data = await self.websocket.sock.readData(true)
 
-  discard self.websocket.close()
-  echo "... socket went away"
+    result = data.data
+    if data.opcode == Opcode.Close:
+      discard self.websocket.close()
+      echo "... socket went away"
+
   return ""
 
 ### Callbacks
-
-proc reader(ws: AsyncWebSocket) {.async.} =
-  while true:
-    let read = await ws.sock.readData(true)
-    echo "read: " & $read
 
 proc ping*(ws: AsyncWebSocket) {.async.} =
   while true:
     await sleepAsync(6000)
     echo "ping"
     await ws.sock.sendPing(true)
-
-proc serve*(self: SlackServer) {.async.} = 
-  ## The main event loop. Reads data from slacks RTM
-  ## Individual implementations should define their own loop
-  
-  let ws = self.websocket
-
-  asyncCheck reader(ws)
-  asyncCheck ping(ws)
-
-  runForever()

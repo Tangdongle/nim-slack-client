@@ -6,7 +6,15 @@ import websocket
 from events import EventEmitter, EventArgs
 
 type
-  TimeZone* = ref object of RootObj
+  SlackNotConnectedError* = object of Exception
+  RTMReadFailError* = object of Exception
+
+type
+  ChangeStatus* {.pure.} = enum
+    noChange, channelCreated, imCreated, teamJoin
+
+type
+  TimeZone*  = ref object of RootObj
     zone*: string
 
 type
@@ -77,3 +85,15 @@ proc `$`*(C: SlackUser): string =
 
 proc `$`*(C: SlackMessage): string = 
   return "Type: " & C.msgtype & ", Channel: " & $C.channel & ", User: " & $C.user & ", TimeStamp: " & C.timeStamp
+
+proc `$`*(C: ChangeStatus): string = 
+  case ord(C)
+    of 0:
+      result = "No Change"
+    of 1:
+      result = "Channel Created"
+    of 2:
+      result = "IM Created"
+    of 3:
+      result = "Team Join"
+
