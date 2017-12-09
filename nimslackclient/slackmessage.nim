@@ -15,7 +15,7 @@ proc buildSlackMessage*(server: SlackServer, data: JsonNode, response: Response 
 
   #
   if data.hasKey("ok"):
-    result.ok = data["ok"].getBool()
+    result.ok = data["ok"].getBVal()
   else:
     #Set to false so we don't process messages without verification
     result.ok = false

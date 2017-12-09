@@ -64,7 +64,7 @@ proc appendUserAgent*(self: SlackServer, name, version: string): SlackServer =
 
 proc didInitSucceed(response: JsonNode): bool = 
   ##Checks to see if the initial login request succeeded
-  return response["ok"].getBool()
+  response["ok"].getBVal()
 
 proc buildSlackUri(wsUri: Uri, config: Config): Uri =
   result = parseUri(format("$#://$#:$#$#$#", wsUri.scheme, wsUri.hostname, config.WsPort, wsUri.path, wsUri.query))
@@ -80,7 +80,7 @@ proc parseChannels*(self: var SlackServer, channels: JsonNode) {.discardable.} =
   for channel in channels:
     #TODO: Some channels are bots or apps, so we need to handle those differently in the future
     try:
-      if channel["is_channel"].getBool == false:
+      if channel["is_channel"].getBVal() == false:
         continue
 
       var newChannel = initSlackChannel(
@@ -102,7 +102,7 @@ proc parseUsers*(self: SlackServer, users: JsonNode): SlackServer {.discardable.
 
   var counter = 1
   for user in users:
-    if user.hasKey("deleted") and user["deleted"].getBool() == true:
+    if user.hasKey("deleted") and user["deleted"].getBVal() == true:
       echo "Skipping deleted user " & $user["name"].str
       continue
 
@@ -164,7 +164,7 @@ proc rtmConnect*(self: var SlackServer, reconnect: bool = false, use_rtm_start:b
   var wsUri = parseUri(loginData["url"].str)
   let serverUrl = buildSlackUri(wsUri, config)
 
-  let ws = waitFor newAsyncWebSocket(serverUrl, verifySsl = false)
+  let ws = waitFor newAsyncWebSocket(serverUrl)
 
 
   if reconnect == true:
