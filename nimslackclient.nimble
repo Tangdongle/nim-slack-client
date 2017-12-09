@@ -5,8 +5,8 @@ author = "TangDongle"
 description = "Slack Client API for nim"
 license = "MIT"
 
-requires "nim >= 0.17.3"
-requires "https://github.com/Tangdongle/websocket.nim#head"
+requires "nim >= 0.17.2"
+requires "websocket#head", "https://github.com/superfunc/maybe"
 
 task co, "Compile":
   exec "nim c -d:ssl --out:bin/nimslackclient nimslackclient.nim"
@@ -27,7 +27,7 @@ task debug, "Debug":
   exec "nim c --debugger:native -d:ssl --out:bin/nimslackclient nimslackclient.nim"
 
 task ch, "Check Syntax":
-  exec "nim check nimslackclient.nim"
+  exec "nim check -d:ssl nimslackclient.nim"
   for fn in listFiles("nimslackclient"):
     echo fn
-    exec "nim check " & fn
+    exec "nim check -d:ssl " & fn

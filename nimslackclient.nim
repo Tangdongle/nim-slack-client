@@ -7,49 +7,46 @@
 ##
 
 import asyncnet, websocket
-include nimslackclient/server
+#include nimslackclient/server
 
-proc handleMessageEvent(e: EventArgs) = 
-  echo "EVENTS"
-
-proc own_reader(ws: AsyncWebSocket, server: SlackServer): Future[SlackMessage] {.async.} =
-  var jsonData = parseJson("""{"type": "NoMessage"}""")
-
-  while jsonData["type"].getStr == "NoMessage":
-    let data = await ws.sock.readData(true)
-    #echo "Data" & $data
-    try:
-      jsonData = parseJson(data.data)
-    except JsonParsingError:
-      jsonData = parseJson("""{"type": "NoMessage"}""")
-
-  result = buildSlackMessage(server, jsonData)
-
-proc own_serve(self: SlackServer) {.async.} = 
-  ## The main event loop. Reads data from slack's RTM
-  ## Individual implementations should define their own loop
-  
-  let ws = self.websocket
-
-  while true:
-    var resp = await own_reader(ws, self)
-    try:
-      if isNil(resp.msgtype) == false:
-        echo "Type " & $resp.msgtype
-        if $resp.msgtype == "message":
-          if isNil(resp.text) == false:
-            echo "Message " & $resp.text
-          if isNil(resp.user) == false:
-            echo "User " & $resp.user.name
-          if isNil(resp.channel) == false:
-            echo "Channel" & $resp.channel.name
-    except:
-      echo "No message"
-
-var server = rtmConnect(reconnect=false, use_rtm_start=true)
-asyncCheck own_serve(server)
-asyncCheck ping(server.websocket)
-runForever()
+#proc own_reader(ws: AsyncWebSocket, server: SlackServer): Future[SlackMessage] {.async.} =
+#  var jsonData = parseJson("""{"type": "NoMessage"}""")
+#
+#  while jsonData["type"].getStr == "NoMessage":
+#    let data = await ws.sock.readData(true)
+#    #echo "Data" & $data
+#    try:
+#      jsonData = parseJson(data.data)
+#    except JsonParsingError:
+#      jsonData = parseJson("""{"type": "NoMessage"}""")
+#
+#  result = buildSlackMessage(server, jsonData)
+#
+#proc own_serve(self: SlackServer) {.async.} = 
+#  ## The main event loop. Reads data from slack's RTM
+#  ## Individual implementations should define their own loop
+#  
+#  let ws = self.websocket
+#
+#  while true:
+#    var resp = await own_reader(ws, self)
+#    try:
+#      if isNil(resp.msgtype) == false:
+#        echo "Type " & $resp.msgtype
+#        if $resp.msgtype == "message":
+#          if isNil(resp.text) == false:
+#            echo "Message " & $resp.text
+#          if isNil(resp.user) == false:
+#            echo "User " & $resp.user.name
+#          if isNil(resp.channel) == false:
+#            echo "Channel" & $resp.channel.name
+#    except:
+#      echo "No message"
+#
+#var server = rtmConnect(reconnect=false, use_rtm_start=true)
+#asyncCheck own_serve(server)
+#asyncCheck ping(server.websocket)
+#runForever()
 
 
 echo "AFTER LOOP"

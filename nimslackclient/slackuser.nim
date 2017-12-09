@@ -3,7 +3,6 @@ from slacktypes import SlackUser, SlackServer, TimeZone
 
 proc initSlackUser*(user_id:string, name:string = "" , real_name:string = "", email: string  = "", timezone: TimeZone = TimeZone(zone: "UTC"), server: SlackServer): SlackUser = 
   ## Create and return a user
-  new(result)
   result.id = user_id
   result.name = name
   result.real_name = real_name
