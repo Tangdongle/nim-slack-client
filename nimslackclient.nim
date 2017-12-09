@@ -7,7 +7,7 @@
 ##
 
 import asyncnet, websocket
-include nimslackclient/server
+#include nimslackclient/server
 
 #proc own_reader(ws: AsyncWebSocket, server: SlackServer): Future[SlackMessage] {.async.} =
 #  var jsonData = parseJson("""{"type": "NoMessage"}""")

@@ -27,7 +27,6 @@ proc initSlackServer*(
   ): SlackServer = 
   ## initialises a slack server
 
-  new result
   result.token = token
   result.username = username
   result.domain = domain
@@ -229,7 +228,8 @@ proc rtmConnect*(reconnect: bool = false, proxies: seq[Proxy] = @[], payload: Js
   var wsUri = parseUri(loginData["url"].str)
   let serverUrl = buildSlackUri(wsUri, config)
 
-  let ws = waitFor newAsyncWebSocket(serverUrl, verifySsl = false)
+  let ws = waitFor newAsyncWebSocket(serverUrl)
+  echo "Connected to " & $serverUrl
 
 
   if reconnect == true:
