@@ -39,7 +39,7 @@ proc appendUserAgent*(self: SlackRequest, name: string, version: string): SlackR
   if len(self.customUserAgent) > 0:
     result.customUserAgent.add(replace(name, "/", ":") & " " & replace(version, "/", ":"))
   
-proc sendRequest*(self: SlackRequest, server: SlackServer, token: string, request = "?", data: JsonNode, domain = "slack.com", timeout: int): SlackMessage {.discardable.} =
+proc sendRequest*(self: SlackRequest, server: SlackServer, token: string, request = "?", data: JsonNode, domain = "slack.com", timeout: int = -1): SlackMessage {.discardable.} =
   ## Send a request to the slack api
   ## We add all elements from our json data node passed in and 
   ## send it up with a token

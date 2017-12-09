@@ -31,6 +31,14 @@ proc appendUserAgent*(self: SlackClient, name, version: string): SlackClient =
   result.server.apiRequester = self.server.apiRequester.appendUserAgent(name=name, version=version)
 
 proc apiCall(self: SlackClient, request: string, timeout: int, payload: JsonNode = newJObject()): SlackMessage = 
+  ## Makes a call to the slack websocket
+  ##
+  ## Args:
+  ##   request: API endpoint to send to
+  ##   timeout: Timout for api call
+  ##   payload: JSON payload to send to the 
+  ##
+  
   result = self.server.apiCall(request=request, timeout=timeout, payload=payload)
   echo $(result.ok)
   echo result.text
@@ -128,9 +136,9 @@ proc rtmRead*(self: SlackClient): Future[seq[JsonNode]] {.async.} =
       raise newException(SlackNotConnectedError, "No server to read from!")
 
 proc sendRTMMessage*(self: SlackClient, channel, message: string, thread: string = "", reply_broadcast: bool = false): int {.discardable.} =
-  #[
-  # Sends a message to the slack RTM
-  ]#
+  ## Sends a message to the slack RTM
+  ## 
+  ##
 
   var slackChannel = findChannelById(channel_id=channel, server=self.server)
 
@@ -142,13 +150,3 @@ proc sendRTMMessage*(self: SlackClient, channel, message: string, thread: string
       message=message, thread=thread,
       reply_broadcast=reply_broadcast
     )
-
-
-
-
-  
-    
-
-
-  
-
