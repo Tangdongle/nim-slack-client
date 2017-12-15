@@ -13,16 +13,18 @@ import slackchannel
 proc rtmConnect(self: SlackClient, token: string, with_team_state: bool = false, payload: JsonNode = newJObject(), proxies: seq[Proxy] = newSeq[Proxy](0)): SlackClient = 
   new result
   result = self
+  echo "IN RTM CONNECT CLIENT"
   try:
     result.server = rtmConnect(use_rtm_start=with_team_state, payload=payload, proxies=proxies)
   except:
     echo "Failed to connect"
+    raise
 
-proc newSlackClient*(token: string, proxies: seq[Proxy]): SlackClient = 
+proc newSlackClient*(token: string, with_team_state: bool = false, proxies: seq[Proxy] = @[]): SlackClient = 
   new result
 
   result.token = token
-  result = rtmConnect(result, token=token, proxies=proxies)
+  result = result.rtmConnect(token=token, with_team_state=with_team_state, proxies=proxies)
 
 proc appendUserAgent*(self: SlackClient, name, version: string): SlackClient =
   new result
@@ -118,7 +120,7 @@ proc rtmRead*(self: SlackClient): Future[seq[JsonNode]] {.async.} =
     just server:
       try:
         var data = await server.websocketSafeRead()
-        var dataLines = @[JsonNode]
+        var dataLines: seq[JsonNode] = @[]
 
         #Our data can be split into multiple messages
         for line in splitLines(data):

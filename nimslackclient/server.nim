@@ -1,5 +1,6 @@
 import typetraits
 import json
+from net import newContext, CVerifyNone
 import asyncnet, asyncdispatch, uri, strutils, lists, httpclient
 import events
 import websocket
@@ -27,6 +28,7 @@ proc initSlackServer*(
   ): SlackServer = 
   ## initialises a slack server
 
+  result = new SlackServer
   result.token = token
   result.username = username
   result.domain = domain
@@ -45,10 +47,12 @@ proc initRTM(request: SlackRequest, domain = "slack.com", token: string, payload
   ##
   var data = newMultiPartData()
 
-  var client = newHttpClient()
+  let slackSSLContext = newContext(verifyMode = CVerifyNone)
+  var client = newHttpClient(sslContext=slackSSLContext)
 
   #We use start so that we can get lists of users and other useful stuff
   let url = "https://" & domain & "/api/" & (if use_rtm_start: "rtm.start" else: "rtm.connect")
+  echo "VERIFYING WITH URL " & url
   client.headers = newHttpHeaders({
       "user-agent": request.getUserAgent(),
       "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
@@ -67,7 +71,7 @@ proc didInitSucceed(response: JsonNode): bool =
   response["ok"].getBVal()
 
 proc buildSlackUri(wsUri: Uri, config: Config): Uri =
-  result = parseUri(format("$#://$#:$#$#$#", wsUri.scheme, wsUri.hostname, config.WsPort, wsUri.path, wsUri.query))
+  result = parseUri(format("$#://$#:$#$#$#", wsUri.scheme, wsUri.hostname, config.WsPort, wsUri.path, (if isNilOrEmpty(wsUri.query): "" else: wsUri.query)).strip())
 
 proc initBotUser(self: var SlackServer, selfData: JsonNode) {.discardable.} = 
   var user = SlackUser(id: selfData["id"].str, name: selfData["name"].str, real_name: self.config.BotName, email: self.config.BotEmail, timezone: Timezone(zone: self.config.BotTimeZone), server: self)
@@ -135,8 +139,11 @@ proc attachChannel*(self: SlackServer, name, user_id, tz: string = "UTC", member
     result.channels.prepend(channel)
 
 proc parseLoginData*(self: var SlackServer, loginData: JsonNode) {.discardable.} =
-  parseUsers(self, loginData["users"])
-  parseChannels(self, loginData["channels"])
+  echo $loginData
+  if loginData.hasKey("users"):
+    parseUsers(self, loginData["users"])
+  if loginData.hasKey("channels"):
+    parseChannels(self, loginData["channels"])
 
 proc rtmConnect*(self: var SlackServer, reconnect: bool = false, use_rtm_start:bool = false, proxies: seq[Proxy] = @[], payload: JsonNode = newJObject()): SlackServer {.discardable.} =
   ## Connect or reconnect to the RTM
@@ -164,7 +171,8 @@ proc rtmConnect*(self: var SlackServer, reconnect: bool = false, use_rtm_start:b
   var wsUri = parseUri(loginData["url"].str)
   let serverUrl = buildSlackUri(wsUri, config)
 
-  let ws = waitFor newAsyncWebSocket(serverUrl)
+  let slackSSLContext = newContext(verifyMode = CVerifyNone)
+  let ws = waitFor newAsyncWebSocket(serverUrl, ctx = slackSSLContext)
 
 
   if reconnect == true:
@@ -207,6 +215,7 @@ proc rtmConnect*(reconnect: bool = false, proxies: seq[Proxy] = @[], payload: Js
   ## We use rtm.start instead of connect to build user lists
   ## TODO: Replace .start with .connect and use api calls to build users etc
   new result
+  echo "IN RTM CONNECT SERVER"
 
   let config = loadConfig()
 
@@ -228,8 +237,8 @@ proc rtmConnect*(reconnect: bool = false, proxies: seq[Proxy] = @[], payload: Js
   var wsUri = parseUri(loginData["url"].str)
   let serverUrl = buildSlackUri(wsUri, config)
 
-  let ws = waitFor newAsyncWebSocket(serverUrl)
-  echo "Connected to " & $serverUrl
+  let slackSSLContext = newContext(verifyMode = CVerifyNone)
+  let ws = waitFor newAsyncWebSocket(serverUrl, ctx = slackSSLContext)
 
 
   if reconnect == true:
