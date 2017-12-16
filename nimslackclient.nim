@@ -7,7 +7,7 @@
 ##
 
 import asyncnet, websocket
-#include nimslackclient/server
+import nimslackclient/client
 
 #proc own_reader(ws: AsyncWebSocket, server: SlackServer): Future[SlackMessage] {.async.} =
 #  var jsonData = parseJson("""{"type": "NoMessage"}""")
@@ -49,4 +49,5 @@ import asyncnet, websocket
 #runForever()
 
 
+var slackClient = newSlackClient("", true, @[])
 echo "AFTER LOOP"
