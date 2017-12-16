@@ -139,7 +139,6 @@ proc attachChannel*(self: SlackServer, name, user_id, tz: string = "UTC", member
     result.channels.prepend(channel)
 
 proc parseLoginData*(self: var SlackServer, loginData: JsonNode) {.discardable.} =
-  echo $loginData
   if loginData.hasKey("users"):
     parseUsers(self, loginData["users"])
   if loginData.hasKey("channels"):
@@ -307,15 +306,27 @@ proc websocketSafeRead*(self: SlackServer): Future[string] {.async.} =
   #[
   Polls the websocket for string result or raises an exception
   ]#
+  result = ""
   while true:
     var data = await self.websocket.sock.readData(true)
 
-    result = data.data
-    if data.opcode == Opcode.Close:
-      discard self.websocket.close()
-      echo "... socket went away"
-
-  return ""
+    case data.opcode
+      of Opcode.Close:
+        discard self.websocket.close()
+        echo "... socket went away"
+        return ""
+      of Opcode.Cont:
+        #Continued frame, concat until 0x1 comes in
+        result.add(data.data)
+        continue
+      of Opcode.Text:
+        return data.data
+      of Opcode.Binary:
+        #Handle images, files here
+        continue
+      else:
+        #Other
+        continue
 
 ### Callbacks
 
@@ -324,3 +335,9 @@ proc ping*(ws: AsyncWebSocket) {.async.} =
     await sleepAsync(6000)
     echo "ping"
     await ws.sock.sendPing(true)
+
+proc ping*(self: SlackServer) {.async.} =
+  while true:
+    await sleepAsync(6000)
+    echo "ping"
+    await self.websocket.sock.sendPing(true)

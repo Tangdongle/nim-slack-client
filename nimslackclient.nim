@@ -6,8 +6,10 @@
 #read: (opcode: Text, data: {"type":"desktop_notification","title":"SignIQ","subtitle":"bottystuff","msg":"1504772511.000007","content":"ryanc: @sodabot WOW","channel":"G64HV5E0Y","launchUri":"slack:\/\/channel?id=G64HV5E0Y&message=1504772511000007&team=T03DRH8QZ","avatarImage":"https:\/\/avatars.slack-edge.com\/2017-08-02\/221029099876_496046da12c5ab7c9d86_192.jpg","ssbFilename":"knock_brush.mp3","imageUri":null,"is_shared":false,"event_ts":"1504772511.000132"})
 ##
 
-import asyncnet, websocket
-import nimslackclient/client
+import sequtils
+import asyncnet, asyncdispatch
+import nimslackclient/client, nimslackclient/server
+import nimslackclient/slacktypes
 
 #proc own_reader(ws: AsyncWebSocket, server: SlackServer): Future[SlackMessage] {.async.} =
 #  var jsonData = parseJson("""{"type": "NoMessage"}""")
@@ -48,6 +50,20 @@ import nimslackclient/client
 #asyncCheck ping(server.websocket)
 #runForever()
 
+proc server(slackClient: SlackClient) {.async.} =
+  while true:
+    var message = await slackClient.rtmRead()
+    if len(message) > 0:
+      for line in message:
+        echo line.str
+    
+
+
 
 var slackClient = newSlackClient("", true, @[])
+asyncCheck server(slackClient)
+asyncCheck slackClient.server.ping()
+runForever()
+
+
 echo "AFTER LOOP"

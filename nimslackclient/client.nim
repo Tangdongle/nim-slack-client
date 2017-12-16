@@ -42,8 +42,7 @@ proc apiCall(self: SlackClient, request: string, timeout: int, payload: JsonNode
   ##
   
   result = self.server.apiCall(request=request, timeout=timeout, payload=payload)
-  echo $(result.ok)
-  echo result.text
+  echo result.msgType
 
   
   case result.msgType.toLowerAscii
@@ -121,11 +120,11 @@ proc rtmRead*(self: SlackClient): Future[seq[JsonNode]] {.async.} =
       try:
         var data = await server.websocketSafeRead()
         var dataLines: seq[JsonNode] = @[]
+        echo data
 
         #Our data can be split into multiple messages
         for line in splitLines(data):
           dataLines.add(parseJson(line))
-          echo line
 
         #For each line, load it into our delta function
         for item in dataLines:
