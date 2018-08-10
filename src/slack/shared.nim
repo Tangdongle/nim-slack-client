@@ -1,10 +1,47 @@
 import httpclient
 from strutils import `%`, rsplit
 from uri import parseUri
-from json import `[]`, getStr, parseJson, JsonNode, newJString, add, `$`, newJObject, `%*`
+from json import `[]`, getStr, parseJson, JsonNode, newJString, add, `$`, newJObject, `%*`, parseFile
 import net
 import asyncdispatch
-from websocket import newAsyncWebsocketClient, AsyncWebsocket, sendText
+from websocket import newAsyncWebsocketClient, AsyncWebsocket, sendText, sendPing
+from os import joinPath, getConfigDir
+import macros
+
+proc getEnumFieldDefNodes(stmtList: NimNode): seq[NimNode] =
+    #[
+    Get all the defined fields and their string enum equivalent
+    ]#
+    expectKind(stmtList, nnkStmtList)
+    result = @[]
+
+    for child in stmtList:
+        expectKind(child, nnkAsgn)
+        result.add(newNimNode(nnkEnumFieldDef).add(child[0]).add(child[1]))
+
+macro rtmtypes(typeName: untyped, fields: untyped): untyped =
+    #[
+    As there's many many slack message types, with new ones being added, 
+    we want to build an enum from this definition and define a proc
+    that translates a string into an Enum 
+    ]#
+    result = newStmtList()
+    result.add(newEnum(
+        name = newIdentNode(typeName.ident),
+        fields = getEnumFieldDefNodes(fields),
+        public = true,
+        pure = true)
+    )
+    echo "TypeName"
+    echo treeRepr(typeName)
+    echo "Fields"
+    echo treeRepr(fields)
+    echo "Tree"
+    echo treeRepr(result)
+
+rtmtypes SlackRTMType:
+    Message = "message"
+    UserTyping = "user_typing"
 
 type
     RTMConnection* = object
@@ -24,9 +61,6 @@ type
         `type`: SlackRTMType
         channel: string
         text: string
-
-    SlackRTMType* {.pure.} = enum
-        Message = "message"
 
 type
     FailedToConnectException* = object of Exception
@@ -81,6 +115,8 @@ proc newSlackMessage(): SlackMessage =
     result.channel = newStringOfCap(255)
     result.text = newStringOfCap(8192)
 
+#proc newSlackMessage(data: JsonNode): SlackMessage =
+
 proc newSlackMessage*(msgType: SlackRTMType, channel, text: string): SlackMessage =
     #[
     Creates a new slack message
@@ -92,10 +128,22 @@ proc newSlackMessage*(msgType: SlackRTMType, channel, text: string): SlackMessag
     result.channel = channel
     result.text = text
 
+proc createFindSlackRTMType(typeName: NimIdent, identDefs: seq[NimNode]): NimNode =
+    var msgTypeIdent = newIdentNode("msgType")
+    var body = newStmtList()
+    body.add quote do:
+        case `msgTypeIdent`
+        for identDef in identDefs:
+            body.add quote do:
+                of $`typeName`.`identDef`:
+                    return `typeName`.`identDef`
+
 proc findSlackRTMType(msgType: string): SlackRTMType =
     case msgType
         of $SlackRTMType.Message:
             result = SlackRTMType.Message
+        of $SlackRTMType.UserTyping:
+            result = SlackRTMType.UserTyping
 
 proc newSlackMessage*(msgType, channel, text: string): SlackMessage =
     let messageType = findSlackRTMType(msgType)
@@ -127,7 +175,7 @@ proc isConnected(connection: RTMConnection): bool =
     ]#
     not isNil(connection.sock)
 
-proc makeRTMConnection*(connection: RTMConnection, use_start_endpoint=false): (RTMConnection, SlackUser) =
+proc initRTMConnection*(connection: RTMConnection, use_start_endpoint=false): (RTMConnection, SlackUser) =
     #[
     Make the initial connection to the connect endpoint, returning us 
     ]#
@@ -153,3 +201,18 @@ proc initWebsocketConnection*(connection: RTMConnection): RTMConnection =
     result.sock = waitFor newAsyncWebsocketClient(uri)
     if not isConnected(result):
         raise newException(FailedToConnectException, "failed to connect to websocket")
+
+proc ping*(sock: AsyncWebsocket) {.async.} =
+    while true:
+        await sleepAsync(6000)
+        echo "ping"
+        await sock.sendPing()
+
+proc getTokenFromConfig*(): string = 
+    let
+        config = joinPath(getConfigDir(), "nim-slack")
+    
+    parseFile(joinPath(config, "token.cfg"))["token"].getStr
+
+when isMainModule:
+    discard findSlackRTMType("message")

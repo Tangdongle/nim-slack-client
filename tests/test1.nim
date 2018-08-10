@@ -50,7 +50,7 @@ suite "Websocket Connection":
     test "Can get websocket connection":
         var connection = newRTMConnection(token, port)
 
-        let (validatedConnection, user) = connection.makeRTMConnection()
+        let (validatedConnection, user) = connection.initRTMConnection()
 
         connection = initWebsocketConnection(validatedConnection)
 
@@ -61,7 +61,7 @@ suite "Websocket Connection":
 
         var connection = newRTMConnection(token, port)
 
-        let (validatedConnection, user) = connection.makeRTMConnection()
+        let (validatedConnection, user) = connection.initRTMConnection()
 
         connection = initWebsocketConnection(validatedConnection)
 
