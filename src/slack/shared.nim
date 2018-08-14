@@ -19,6 +19,40 @@ proc getEnumFieldDefNodes(stmtList: NimNode): seq[NimNode] =
         expectKind(child, nnkAsgn)
         result.add(newNimNode(nnkEnumFieldDef).add(child[0]).add(child[1]))
 
+proc createFindSlackRTMTypeProc(typeName: NimIdent, identDefs: seq[NimNode]): NimNode =
+    #[
+    Build our proc to convert string to these Message Type objects
+    ]#
+    var msgTypeIdent = newIdentNode("msgType")
+    var body = newStmtList()
+
+    body.add(newProc(name = newTree(nnkPostFix, ident("*"), newIdentNode("stringTo$#" % $typeName)),
+        params = @[newIdentNode(typeName),
+            newIdentDefs(msgTypeIdent, ident("string"))
+        ]))
+
+    body[0].body.add(newTree(nnkCaseStmt, msgTypeIdent))
+    for identDef in identDefs:
+        body[0].body[0].add(newTree(nnkOfBranch,
+            newTree(nnkPrefix,
+                newIdentNode("$"),
+                newTree(nnkDotExpr,
+                    newIdentNode(typeName),
+                    identDef[0]
+                )
+            ),
+            newStmtList(
+                newTree(nnkAsgn,
+                    ident("result"),
+                    newTree(nnkDotExpr,
+                        newIdentNode(typeName),
+                        identDef[0]
+                    )
+                )
+            )
+        ))
+    return body
+
 macro rtmtypes(typeName: untyped, fields: untyped): untyped =
     #[
     As there's many many slack message types, with new ones being added, 
@@ -26,17 +60,15 @@ macro rtmtypes(typeName: untyped, fields: untyped): untyped =
     that translates a string into an Enum 
     ]#
     result = newStmtList()
-    result.add(newEnum(
+
+    result.add(newStmtList(newEnum(
         name = newIdentNode(typeName.ident),
         fields = getEnumFieldDefNodes(fields),
         public = true,
         pure = true)
-    )
-    echo "TypeName"
-    echo treeRepr(typeName)
-    echo "Fields"
-    echo treeRepr(fields)
-    echo "Tree"
+    ))
+
+    result.add(createFindSlackRTMTypeProc(ident(typeName), getEnumFieldDefNodes(fields)))
     echo treeRepr(result)
 
 rtmtypes SlackRTMType:
@@ -128,25 +160,9 @@ proc newSlackMessage*(msgType: SlackRTMType, channel, text: string): SlackMessag
     result.channel = channel
     result.text = text
 
-proc createFindSlackRTMType(typeName: NimIdent, identDefs: seq[NimNode]): NimNode =
-    var msgTypeIdent = newIdentNode("msgType")
-    var body = newStmtList()
-    body.add quote do:
-        case `msgTypeIdent`
-        for identDef in identDefs:
-            body.add quote do:
-                of $`typeName`.`identDef`:
-                    return `typeName`.`identDef`
-
-proc findSlackRTMType(msgType: string): SlackRTMType =
-    case msgType
-        of $SlackRTMType.Message:
-            result = SlackRTMType.Message
-        of $SlackRTMType.UserTyping:
-            result = SlackRTMType.UserTyping
 
 proc newSlackMessage*(msgType, channel, text: string): SlackMessage =
-    let messageType = findSlackRTMType(msgType)
+    let messageType = stringToSlackRTMType(msgType)
     newSlackMessage(messageType, channel, text)
 
 proc `%*`*(message: SlackMessage): JsonNode =
@@ -215,4 +231,5 @@ proc getTokenFromConfig*(): string =
     parseFile(joinPath(config, "token.cfg"))["token"].getStr
 
 when isMainModule:
-    discard findSlackRTMType("message")
+    echo stringToSlackRTMType("user_typing")
+    assert(stringToSlackRTMType("message") == SlackRTMType.Message)
