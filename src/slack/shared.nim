@@ -1,7 +1,7 @@
 import httpclient
 from strutils import `%`, rsplit
 from uri import parseUri
-from json import `[]`, getStr, parseJson, JsonNode, newJString, add, `$`, newJObject, `%*`, parseFile
+from json import `[]`, getStr, parseJson, JsonNode, newJString, add, `$`, newJObject, `%*`, parseFile, hasKey
 import net
 import asyncdispatch
 from websocket import newAsyncWebsocketClient, AsyncWebsocket, sendText, sendPing, Opcode
@@ -95,6 +95,9 @@ type
 
 type
     FailedToConnectException* = object of Exception
+    InvalidConfigurationException* = object of Exception
+    MissingConfigFile* = object of Exception
+    InvalidAuthException* = object of Exception
 
 proc getMessageID(connection: RTMConnection): (RTMConnection, uint) =
     #[
@@ -191,9 +194,11 @@ proc isConnected(connection: RTMConnection): bool =
     ]#
     not isNil(connection.sock)
 
-proc initRTMConnection*(connection: RTMConnection, use_start_endpoint=false): (RTMConnection, SlackUser) =
+proc initRTMConnection(connection: RTMConnection, use_start_endpoint=false): (RTMConnection, SlackUser) =
     #[
     Make the initial connection to the connect endpoint, returning us 
+    Raises an InvalidAuthException if the authorization request was unsuccessful
+    Raises FailedToConnectException for any other connection error
     ]#
     result[0] = connection
     var url = "https://slack.com/api/rtm."
@@ -203,10 +208,17 @@ proc initRTMConnection*(connection: RTMConnection, use_start_endpoint=false): (R
         url = url &  "connect"
 
     let jsResponse = parseJson(postContent(connection.client, url, multipart=connection.data))
-    result[0].wsUrl = jsResponse["url"].getStr
-    result[1] = parseUserData(jsResponse)
+    try:
+        result[0].wsUrl = jsResponse["url"].getStr
+        result[1] = parseUserData(jsResponse)
+    except KeyError:
+        if jsResponse.hasKey("error"):
+            if jsResponse["error"].getStr == "invalid_auth":
+                raise newException(InvalidAuthException, "invalid token")
+            else:
+                raise newException(FailedToConnectException, "failed to connect (reason: $#)" % jsResponse["error"].getStr)
 
-proc initWebsocketConnection*(connection: RTMConnection): RTMConnection =
+proc initWebsocketConnection(connection: RTMConnection): RTMConnection =
     #[
     Initialise a connection with the web socket so we can start receiving and sending data
     ]#
@@ -218,11 +230,30 @@ proc initWebsocketConnection*(connection: RTMConnection): RTMConnection =
     if not isConnected(result):
         raise newException(FailedToConnectException, "failed to connect to websocket")
 
+proc connectToRTM*(token: string, port: Port): (RTMConnection, SlackUser) =
+    var connection = newRTMConnection(token, port)
+
+    let (validatedConnection, user) = connection.initRTMConnection()
+
+    connection = initWebsocketConnection(validatedConnection)
+    result = (connection, user)
+
+proc connectToRTM*(token: string, port: int): (RTMConnection, SlackUser) =
+    connectToRTM(token, Port port)
+
 proc getTokenFromConfig*(): string = 
     let
         config = joinPath(getConfigDir(), "nim-slack")
     
-    parseFile(joinPath(config, "token.cfg"))["token"].getStr
+    try:
+        result = parseFile(joinPath(config, "token.cfg"))["token"].getStr
+    except KeyError:
+        echo "No Token key found in config file"
+        raise newException(InvalidConfigurationException, "no token key found in config")
+    except IOError:
+        echo "No token.cfg file found in $#.\n Creating a blank one now.\n Please add your token to it" % config
+        writeFile(joinPath(config, "token.cfg"), """{"token": "xxxxx"}""")
+        raise newException(MissingConfigFile, "No token.cfg file found in $#" % config)
 
 proc isTextOpcode*(opcode: Opcode): bool =
     opcode == Opcode.Text

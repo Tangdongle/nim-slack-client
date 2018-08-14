@@ -1,6 +1,7 @@
 # slack
 # Copyright Ryanc_signiq
 # Wrapper for Slack
+#[
 import slack/shared
 import asyncnet, asyncdispatch
 import websocket
@@ -10,11 +11,7 @@ let
     token = getTokenFromConfig()
     port = Port 443
 
-var connection = newRTMConnection(token, port)
-
-let (validatedConnection, user) = connection.initRTMConnection()
-
-connection = initWebsocketConnection(validatedConnection)
+var (connection, user) = connectToRTM(token, port)
 
 proc serve() {.async.} =
     while true:
@@ -23,8 +20,10 @@ proc serve() {.async.} =
         if data.len > 0 and isTextOpcode(opcode):
             let parsedData = parseJson(data)
             if parsedData.hasKey("reply_to"):
+                #Reply to a directed message here
                 continue
             elif parsedData["type"].getStr == $SlackRTMType.Message:
+                #Parse normal messages here
                 if parsedData["user"].getStr != user.id:
                     let message = newSlackMessage("message", parsedData["channel"].getStr, parsedData["text"].getStr)
                     discard sendMessage(connection, message)
@@ -35,8 +34,18 @@ proc ping*() {.async.} =
         echo "ping"
         await connection.sock.sendPing(masked = true)
 
-
 asyncCheck serve()
 asyncCheck ping()
 runForever()
+]#
 
+import slack/shared
+import asyncnet, asyncdispatch
+import websocket
+import json
+
+let 
+    token = getTokenFromConfig()
+    port = Port 443
+
+var (rtmConnection, slackUser) = connectToRTM(token, port)
