@@ -4,6 +4,7 @@
 import slack/shared
 import asyncnet, asyncdispatch
 import websocket
+import json
 
 let 
     token = getTokenFromConfig()
@@ -19,11 +20,23 @@ proc serve() {.async.} =
     while true:
         let (opcode, data) = await connection.sock.readData()
         echo data
-        if data.len > 0:
-            let message = newSlackMessage("message", 
-            var t = sendMessage(connection, message)
+        if data.len > 0 and isTextOpcode(opcode):
+            let parsedData = parseJson(data)
+            if parsedData.hasKey("reply_to"):
+                continue
+            elif parsedData["type"].getStr == $SlackRTMType.Message:
+                if parsedData["user"].getStr != user.id:
+                    let message = newSlackMessage("message", parsedData["channel"].getStr, parsedData["text"].getStr)
+                    discard sendMessage(connection, message)
+
+proc ping*() {.async.} =
+    while true:
+        await sleepAsync(6000)
+        echo "ping"
+        await connection.sock.sendPing(masked = true)
+
 
 asyncCheck serve()
-asyncCheck ping(connection.sock)
+asyncCheck ping()
 runForever()
 

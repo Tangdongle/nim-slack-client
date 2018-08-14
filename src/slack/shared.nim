@@ -4,7 +4,7 @@ from uri import parseUri
 from json import `[]`, getStr, parseJson, JsonNode, newJString, add, `$`, newJObject, `%*`, parseFile
 import net
 import asyncdispatch
-from websocket import newAsyncWebsocketClient, AsyncWebsocket, sendText, sendPing
+from websocket import newAsyncWebsocketClient, AsyncWebsocket, sendText, sendPing, Opcode
 from os import joinPath, getConfigDir
 import macros
 
@@ -69,7 +69,6 @@ macro rtmtypes(typeName: untyped, fields: untyped): untyped =
     ))
 
     result.add(createFindSlackRTMTypeProc(ident(typeName), getEnumFieldDefNodes(fields)))
-    echo treeRepr(result)
 
 rtmtypes SlackRTMType:
     Message = "message"
@@ -127,6 +126,7 @@ proc sendMessage*(connection: RTMConnection, message: SlackMessage): RTMConnecti
     let (conn, id) = getMessageID(connection)
     let formattedMessage = formatMessageForSend(message, id)
     waitFor conn.sock.sendText($formattedMessage, masked = true)
+    return conn
 
 proc newSlackUser*(): SlackUser =
     #[
@@ -218,17 +218,14 @@ proc initWebsocketConnection*(connection: RTMConnection): RTMConnection =
     if not isConnected(result):
         raise newException(FailedToConnectException, "failed to connect to websocket")
 
-proc ping*(sock: AsyncWebsocket) {.async.} =
-    while true:
-        await sleepAsync(6000)
-        echo "ping"
-        await sock.sendPing()
-
 proc getTokenFromConfig*(): string = 
     let
         config = joinPath(getConfigDir(), "nim-slack")
     
     parseFile(joinPath(config, "token.cfg"))["token"].getStr
+
+proc isTextOpcode*(opcode: Opcode): bool =
+    opcode == Opcode.Text
 
 when isMainModule:
     echo stringToSlackRTMType("user_typing")

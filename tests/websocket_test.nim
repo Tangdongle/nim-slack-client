@@ -8,11 +8,6 @@ proc reader() {.async.} =
         let read = await ws.readData()
         echo "read: ", read
         await sleepAsync(900)
-        var t = ws.sendText("Test", masked = true)
-        t.addCallback(
-            proc() =
-                echo t.read
-        )
 
 proc ping() {.async.} =
     while true:
