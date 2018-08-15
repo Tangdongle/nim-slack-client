@@ -163,12 +163,14 @@ proc newSlackMessage*(msgType: SlackRTMType, channel, text: string): SlackMessag
     result.channel = channel
     result.text = text
 
-
 proc newSlackMessage*(msgType, channel, text: string): SlackMessage =
     let messageType = stringToSlackRTMType(msgType)
     newSlackMessage(messageType, channel, text)
 
 proc `%*`*(message: SlackMessage): JsonNode =
+    #[
+    Slack message to JSON Node
+    ]#
     result = newJObject()
     result.add("type", newJString($message.type))
     result.add("channel", newJString($message.channel))
@@ -178,14 +180,23 @@ proc `$`*(message: SlackMessage): string =
     $(%*message)
 
 proc newRTMConnection*(token: string, port: int): RTMConnection =
+    #[
+    Return an initialised RTM connection object
+    ]#
     result = RTMConnection(token: token, client: newHttpClient(), data: newMultipartData(), port: Port(port), msgId: 1, sock: nil)
     result.data["token"] = token
 
 proc newRTMConnection*(token: string, port: Port): RTMConnection =
+    #[
+    Return an initialised RTM connection object
+    ]#
     result = RTMConnection(token: token, client: newHttpClient(), data: newMultipartData(), port: port, msgId: 1, sock: nil)
     result.data["token"] = token
 
 proc newRTMConnection*(token: string): RTMConnection =
+    #[
+    Return an initialised RTM connection object
+    ]#
     newRTMConnection(token, Port(443))
 
 proc isConnected(connection: RTMConnection): bool =
@@ -231,6 +242,10 @@ proc initWebsocketConnection(connection: RTMConnection): RTMConnection =
         raise newException(FailedToConnectException, "failed to connect to websocket")
 
 proc connectToRTM*(token: string, port: Port): (RTMConnection, SlackUser) =
+    #[
+    Connect to the RTM and return a connection with an active websocket connection 
+    and a user object for the connection
+    ]#
     var connection = newRTMConnection(token, port)
 
     let (validatedConnection, user) = connection.initRTMConnection()
@@ -239,9 +254,16 @@ proc connectToRTM*(token: string, port: Port): (RTMConnection, SlackUser) =
     result = (connection, user)
 
 proc connectToRTM*(token: string, port: int): (RTMConnection, SlackUser) =
+    #[
+    Connect to the RTM and return a connection with an active websocket connection
+    and a user object for the connection
+    ]#
     connectToRTM(token, Port port)
 
 proc getTokenFromConfig*(): string = 
+    #[
+    Grabs our bot token from a token.cfg config file
+    ]#
     let
         config = joinPath(getConfigDir(), "nim-slack")
     
