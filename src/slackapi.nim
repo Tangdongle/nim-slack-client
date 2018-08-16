@@ -39,9 +39,9 @@ asyncCheck ping()
 runForever()
 ]#
 
-import slack/shared
+import slackapi/shared
 import asyncnet, asyncdispatch
-import websocket
+import websocket, tables
 import json
 
 let 
@@ -49,3 +49,7 @@ let
     port = Port 443
 
 var (rtmConnection, slackUser) = connectToRTM(token, port)
+var slackUserTable = waitFor buildUserTable(rtmConnection)
+
+export shared, websocket, json, tables
+export rtmConnection, slackUser, slackUserTable

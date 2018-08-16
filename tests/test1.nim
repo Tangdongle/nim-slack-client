@@ -1,4 +1,4 @@
-import src/slack/shared
+import src/slackapi/shared
 import unittest, httpclient, json, strutils, websocket, asyncnet, asyncdispatch, uri, os
 import net
 
@@ -6,7 +6,7 @@ suite "Websocket Connection":
 
     setup:
         let
-            config = joinPath(getConfigDir(), "nim-slack")
+            config = joinPath(getConfigDir(), "nim-slackapi")
             token = parseFile(joinPath(config, "token.cfg"))["token"].getStr
             connect_url = "https://slack.com/api/rtm.connect"
             client = newHttpClient()

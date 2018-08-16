@@ -2,7 +2,7 @@
 
 version       = "0.1.0"
 author        = "Ryanc_signiq"
-description   = "Wrapper for Slack"
+description   = "API Wrapper for Slack"
 license       = "GPLv3"
 srcDir        = "src"
 
