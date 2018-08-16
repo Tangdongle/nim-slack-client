@@ -51,5 +51,11 @@ let
 var (rtmConnection, slackUser) = connectToRTM(token, port)
 var slackUserTable = waitFor buildUserTable(rtmConnection)
 
+proc ping*() {.async.} =
+    while true:
+        await sleepAsync(6000)
+        echo "ping"
+        await rtmConnection.sock.sendPing(masked = true)
+
 export shared, websocket, json, tables
-export rtmConnection, slackUser, slackUserTable
+export rtmConnection, slackUser, slackUserTable, ping

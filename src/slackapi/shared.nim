@@ -344,6 +344,11 @@ proc buildUserTable*(connection: RTMConnection): Future[Table[string, SlackUser]
 
     for member in response["members"].items:
         result[member["id"].getStr] = newSlackUser(member["id"].getStr, member["name"].getStr)
+
+proc findUserByName*(userTable: Table[string, SlackUser], name: string): SlackUser =
+    for id, user in userTable.pairs:
+        if user.name == name:
+            return user
         
 when isMainModule:
     echo stringToSlackRTMType("user_typing")
