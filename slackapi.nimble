@@ -18,7 +18,7 @@ task tests, "Run Project Tests":
 
 task run, "Run the main file":
     exec("mkdir -p bin")
-    exec("nim c -r -d:ssl --threads:on --out:bin/slackapi src/slackapi.nim")
+    exec("nim c -r -d:ssl --threads:on --gc:boehm --out:bin/slackapi src/slackapi.nim")
 
 task run_shared, "Run the shared file tests":
     exec("mkdir -p bin")

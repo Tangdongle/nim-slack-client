@@ -5,6 +5,7 @@ import asyncdispatch
 from tables import Table, initTable, pairs, `[]=`
 from json import parseJson, hasKey, `[]`, getStr, items, parseFile, `$`
 from websocket import Opcode, sendText
+import nimobserver
 
 import slackapi/[connection, user, message, slackexceptions]
 
@@ -68,6 +69,7 @@ proc connectToRTM*(token: string, port: int): (RTMConnection, SlackUser) =
 
 proc readSlackMessage*(connection: RTMConnection): Future[SlackMessage] {.async.} =
   ##Only returns Text messages from the RTM connection. Returns an error message if an error is returned
+  echo "In readSlackMessage"
   var tmpConnection = connection
   let (opcode, data) = await readMessage(tmpConnection)
   echo data

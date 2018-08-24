@@ -92,6 +92,7 @@ proc formatMessageForSend*(message: SlackMessage, msgId: uint): JsonNode =
     }
         
 proc newSlackMessage(): SlackMessage =
+  result = new SlackMessage
   result.channel = newStringOfCap(254)
   result.text = newStringOfCap(8192)
   result.user = newStringOfCap(254)
@@ -137,6 +138,5 @@ proc `$`*(message: SlackMessagePtr): string =
 
 method onNotify*(observer: SlackMessageObserver, message: SlackMessagePtr) =
   echo "Message type is" & $message.type
-
 
 
