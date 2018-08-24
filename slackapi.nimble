@@ -22,7 +22,7 @@ task run, "Run the main file":
 
 task run_shared, "Run the shared file tests":
     exec("mkdir -p bin")
-    exec("nim c -r -d:ssl --threads:on --out:bin/shared src/slack/shared.nim")
+    exec("nim c -r -d:ssl --threads:on --out:bin/shared src/slackapi/shared.nim")
 
 task check_files, "Check all files":
     exec("for i in src/**/*.nim; do nim check $i; done")

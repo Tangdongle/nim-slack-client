@@ -1,7 +1,6 @@
 import macros
 from strutils import `%`
 from json import JsonNode, `%*`, newJString, newJObject, add, `$`
-from nimobserver import BaseMessage, BaseObserver
 
 proc getEnumFieldDefNodes(stmtList: NimNode): seq[NimNode] =
   ##Get all the defined fields and their string enum equivalent
@@ -69,16 +68,12 @@ rtmtypes SlackRTMType:
   Error = "error"
 
 type
-  SlackMessage* {.final.} = ref object of BaseMessage
+  SlackMessage* {.final.} = object of RootObj
     `type`*: SlackRTMType
     channel*: string
     text*: string
     user*: string 
     error: string
-
-  SlackMessagePtr* = ptr SlackMessage
-
-  SlackMessageObserver* = ref object of BaseObserver
 
 proc formatMessageForSend*(message: SlackMessage, msgId: uint): JsonNode =
   ##Format a message for slack
@@ -128,15 +123,5 @@ proc `%*`*(message: SlackMessage): JsonNode =
   result.add("channel", newJString(message.channel))
   result.add("message", newJString(message.text))
   result.add("user", newJString(message.user))
-
-proc `$`*(message: SlackMessage): string =
-  $(%*message)
-
-proc `$`*(message: SlackMessagePtr): string = 
-  $message[]
-
-method onNotify*(observer: SlackMessageObserver, message: SlackMessagePtr) =
-  echo "Message type is" & $message.type
-
 
 
