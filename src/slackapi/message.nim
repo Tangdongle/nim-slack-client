@@ -1,6 +1,6 @@
 import macros
 from strutils import `%`, isNilOrEmpty
-from json import JsonNode, `%*`, newJString, newJObject, add, `$`
+from json import JsonNode, `%*`, newJString, newJObject, add, `$`, newJBool
 
 proc getEnumFieldDefNodes(stmtList: NimNode): seq[NimNode] =
   ##Get all the defined fields and their string enum equivalent
@@ -11,13 +11,13 @@ proc getEnumFieldDefNodes(stmtList: NimNode): seq[NimNode] =
     expectKind(child, nnkAsgn)
     result.add(newNimNode(nnkEnumFieldDef).add(child[0]).add(child[1]))
 
-proc createFindSlackRTMTypeProc(typeName: NimIdent, identDefs: seq[NimNode]): NimNode =
+proc createFindSlackRTMTypeProc(typeName: NimNode, identDefs: seq[NimNode]): NimNode =
   ##Builds a proc to convert string to these Message Type objects
   var msgTypeIdent = newIdentNode("msgType")
   var body = newStmtList()
 
-  body.add(newProc(name = newTree(nnkPostFix, ident("*"), newIdentNode("stringTo$#" % $typeName)),
-    params = @[newIdentNode(typeName),
+  body.add(newProc(name = newTree(nnkPostFix, ident("*"), newIdentNode("stringTo$#" % typeName.strVal)),
+    params = @[typeName,
       newIdentDefs(msgTypeIdent, ident("string"))
   ]))
 
@@ -27,7 +27,7 @@ proc createFindSlackRTMTypeProc(typeName: NimIdent, identDefs: seq[NimNode]): Ni
       newTree(nnkPrefix,
         newIdentNode("$"),
         newTree(nnkDotExpr,
-          newIdentNode(typeName),
+          typeName,
           identDef[0]
         )
       ),
@@ -35,7 +35,7 @@ proc createFindSlackRTMTypeProc(typeName: NimIdent, identDefs: seq[NimNode]): Ni
         newTree(nnkAsgn,
           ident("result"),
           newTree(nnkDotExpr,
-            newIdentNode(typeName),
+            typeName,
             identDef[0]
           )
         )
@@ -50,13 +50,13 @@ macro rtmtypes(typeName: untyped, fields: untyped): untyped =
   result = newStmtList()
 
   result.add(newStmtList(newEnum(
-    name = newIdentNode(typeName.ident),
+    name = typeName,
     fields = getEnumFieldDefNodes(fields),
     public = true,
     pure = true)
   ))
 
-  result.add(createFindSlackRTMTypeProc(ident(typeName), getEnumFieldDefNodes(fields)))
+  result.add(createFindSlackRTMTypeProc(typeName, getEnumFieldDefNodes(fields)))
 
 rtmtypes SlackRTMType:
   Message = "message"
@@ -74,6 +74,7 @@ type
     text*: string
     user*: string 
     error: string
+    hidden*: bool
 
 proc formatMessageForSend*(message: SlackMessage, msgId: uint): JsonNode =
   ##Format a message for slack
@@ -91,8 +92,9 @@ proc newSlackMessage(): SlackMessage =
   result.text = newStringOfCap(8192)
   result.user = newStringOfCap(254)
   result.error = newStringOfCap(8192)
+  result.hidden = false
 
-proc newSlackMessage*(msgType: SlackRTMType, channel, text, user: string): SlackMessage =
+proc newSlackMessage*(msgType: SlackRTMType, channel, text, user: string, hidden: bool = false): SlackMessage =
   ##Creates a new slack message
   ##msgType: One of the RTM message types: https://api.slack.com/rtm
   ##channel: A channel ID or direct message ID
@@ -102,6 +104,7 @@ proc newSlackMessage*(msgType: SlackRTMType, channel, text, user: string): Slack
   result.text = text
   result.user = user
   result.error = ""
+  result.hidden = hidden
 
 proc newSlackErrorMessage*(error: string): SlackMessage =
   result = newSlackMessage()
@@ -110,11 +113,11 @@ proc newSlackErrorMessage*(error: string): SlackMessage =
 
 proc hasError*(message: SlackMessage): bool =
   ##
-  not isNilOrEmpty(message.error)
+  message.error.len > 0
 
-proc newSlackMessage*(msgType, channel, text, user: string): SlackMessage =
+proc newSlackMessage*(msgType, channel, text, user: string, hidden: bool = false): SlackMessage =
   let messageType = stringToSlackRTMType(msgType)
-  newSlackMessage(messageType, channel, text, user)
+  newSlackMessage(messageType, channel, text, user, hidden)
 
 proc `%*`*(message: SlackMessage): JsonNode =
   ##Slack message to JSON Node
@@ -123,5 +126,6 @@ proc `%*`*(message: SlackMessage): JsonNode =
   result.add("channel", newJString(message.channel))
   result.add("message", newJString(message.text))
   result.add("user", newJString(message.user))
+  result.add("hidden", newJBool(message.hidden))
 
 

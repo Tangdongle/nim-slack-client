@@ -3,10 +3,17 @@ from strutils import `%`
 from httpclient import postContent, getContent
 import asyncdispatch
 from tables import Table, initTable, pairs, `[]=`
-from json import parseJson, hasKey, `[]`, getStr, items, parseFile, `$`
+from json import parseJson, hasKey, `[]`, getStr, items, parseFile, `$`, getBool
 from websocket import Opcode, sendText
 
-import slackapi/[connection, user, message, slackexceptions]
+import slackapi/[connection, user, message, slackexceptions, channel]
+
+proc openIMChannelForUser*(connection: RTMConnection, user: SlackUser): Future[SlackChannel] {.async.} =
+  let url = "https://slack.com/api/im.open?token=" & connection.token & "&user=" & user.id & "&return_im=true"
+  let response = parseJson(connection.client.getContent(url))
+  echo response
+  result = parseChannelData(response)
+  echo result
 
 proc buildUserTable*(connection: RTMConnection): Future[Table[string, SlackUser]] {.async.} =
   ##Constructs a table mapping users to their IDs for easy translation
@@ -71,13 +78,15 @@ proc readSlackMessage*(connection: RTMConnection): Future[SlackMessage] {.async.
   ##Only returns Text messages from the RTM connection. Returns an error message if an error is returned
   var tmpConnection = connection
   let (opcode, data) = await readMessage(tmpConnection)
-  echo data
 
+  echo data
   #Only return Text types
   if opcode == Opcode.Text:
     let parsedData = parseJson(data)
     if parsedData.hasKey "error":
       return newSlackErrorMessage(parsedData["error"].getStr)
+    elif parsedData.hasKey("hidden") and parsedData["hidden"].getBool == false:
+      return 
     elif parsedData.hasKey("type") and parsedData["type"].getStr == $SlackRTMType.Message:
       return newSlackMessage(parsedData["type"].getStr, parsedData["channel"].getStr, parsedData["text"].getStr, parsedData["user"].getStr)
         
@@ -104,6 +113,7 @@ proc sendMessage*(connection: RTMConnection, message: SlackMessage): RTMConnecti
   ##Returns a Future that completes once the message has been sent
   let (conn, id) = getMessageID(connection)
   let formattedMessage = formatMessageForSend(message, id)
+  echo $formattedMessage
 
   waitFor conn.sock.sendText($formattedMessage)
   return conn
