@@ -53,7 +53,7 @@ proc ping*() {.async.} =
   while true:
     await sleepAsync(6000)
     echo "ping"
-    await rtmConnection.sock.sendPing(masked = true)
+    await rtmConnection.sock.sendPing()
 
 export shared, websocket, json, tables
 export rtmConnection, slackUser, slackUserTable, ping

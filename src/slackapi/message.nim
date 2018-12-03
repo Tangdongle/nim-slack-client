@@ -1,5 +1,5 @@
 import macros
-from strutils import `%`
+from strutils import `%`, isNilOrEmpty
 from json import JsonNode, `%*`, newJString, newJObject, add, `$`
 
 proc getEnumFieldDefNodes(stmtList: NimNode): seq[NimNode] =
@@ -101,7 +101,7 @@ proc newSlackMessage*(msgType: SlackRTMType, channel, text, user: string): Slack
   result.channel = channel
   result.text = text
   result.user = user
-  result.error = nil
+  result.error = ""
 
 proc newSlackErrorMessage*(error: string): SlackMessage =
   result = newSlackMessage()
@@ -110,7 +110,7 @@ proc newSlackErrorMessage*(error: string): SlackMessage =
 
 proc hasError*(message: SlackMessage): bool =
   ##
-  not isNil(message.error)
+  not isNilOrEmpty(message.error)
 
 proc newSlackMessage*(msgType, channel, text, user: string): SlackMessage =
   let messageType = stringToSlackRTMType(msgType)

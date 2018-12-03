@@ -17,7 +17,7 @@ proc buildUserTable*(connection: RTMConnection): Future[Table[string, SlackUser]
     #handle error
     echo "error getting user list"
 
-  var nextCursor:string = nil 
+  var nextCursor:string = ""
   if response.hasKey "response_metadata":
     nextCursor = response["response_metadata"]["next_cursor"].getStr
 
@@ -104,7 +104,7 @@ proc sendMessage*(connection: RTMConnection, message: SlackMessage): RTMConnecti
   let (conn, id) = getMessageID(connection)
   let formattedMessage = formatMessageForSend(message, id)
 
-  waitFor conn.sock.sendText($formattedMessage, masked = true)
+  waitFor conn.sock.sendText($formattedMessage)
   return conn
 
 export message, user, connection, slackexceptions
