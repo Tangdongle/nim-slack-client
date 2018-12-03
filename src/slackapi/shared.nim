@@ -29,6 +29,7 @@ proc findUserByName*(userTable: Table[string, SlackUser], name: string): SlackUs
   for id, user in userTable.pairs:
     if user.name == name:
       return user
+  raise newException(NoSuchUserException, "no such user")
 
 proc initRTMConnection(connection: RTMConnection, use_start_endpoint=false): (RTMConnection, SlackUser) =
   ##Make the initial connection to the connect endpoint, returning an active connection and user data
@@ -40,7 +41,7 @@ proc initRTMConnection(connection: RTMConnection, use_start_endpoint=false): (RT
   if use_start_endpoint:
     url = url & "start"
   else:
-    url = url &  "connect"
+    url = url & "connect"
 
   let jsResponse = parseJson(postContent(connection.client, url, multipart=connection.data))
   try:

@@ -3,3 +3,4 @@ type
   InvalidConfigurationException* = object of Exception
   MissingConfigFile* = object of Exception
   InvalidAuthException* = object of Exception
+  NoSuchUserException* = object of Exception
